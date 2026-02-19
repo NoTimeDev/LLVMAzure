@@ -223,13 +223,8 @@ class SEMANTIC_ANALYSIS:
                 self.analyze_call_expression(node) 
             case "BinaryExpression" | "DereferenceExpression" | "UnaryExpression":
                 self.build_type_from_expr(node)
-    # def retrieve_basic_type(self, node):
-    #     if node["kind"] == "BaseType":
-    #         return node["type"]
-    #     elif node["kind"] == "ArrayType" or node["kind"] == "GenericType":
-    #         return self.retrieve_basic_type(node["of"])
-    #     elif node["kind"] == "PointerType":
-    #         return self.retrieve_basic_type(node["to"])
+            case "DeclareForeignStatement":
+                self.analyze_declare_foreign_statement(node)
 
     def is_return_type(self, type, function_name):
         for data in self.return_types:
@@ -245,17 +240,25 @@ class SEMANTIC_ANALYSIS:
                 return data["return_type"]
         return None
 
-    def stringify_type(self, type):
+    def stringify_type(self, type, array_depth_checker=False):
         value = ""
         node = type
+        array_depth = 0
         while node["kind"] != "BaseType":
             if node["kind"] == "ArrayType":
                 value += "[]"
+                if array_depth_checker and array_depth > 0 and node["size"] == None:
+                    self.error_class.semantic_error(
+                        f"Multi-dimensional array requires all inner elements to have a specified length.",
+                        self.file,
+                        node["line"],
+                    )
                 node = node["of"]
+                array_depth += 1
             elif node["kind"] == "StructType":
                 index = 0
                 for member in node["members"]:
-                    value += self.stringify_type(member) + (", " if index != len(node["members"]) - 1 else "")
+                    value += self.stringify_type(member, array_depth_checker) + (", " if index != len(node["members"]) - 1 else "")
                     index += 1
                 break
             elif node["kind"] == "PointerType":
@@ -483,7 +486,7 @@ class SEMANTIC_ANALYSIS:
             )
             self.error_class.dump()
         self.implicit_int_conversion(type, value_type)
-        s_type = self.stringify_type(type)
+        s_type = self.stringify_type(type, True)
         s_value_type = self.stringify_type(value_type)
         if s_type != s_value_type:
             self.error_class.semantic_error(
@@ -555,3 +558,26 @@ class SEMANTIC_ANALYSIS:
             self.error_class.dump()
         for param in fn["params"]:
             pass
+    
+    def analyze_declare_foreign_statement(self, node):
+        if node["stmt"]["kind"] == "VariableDeclaration":
+            stack_frame = self.stack_frame[len(self.stack_frame) - 1]
+            self.stringify_type(node["stmt"]["type"], True)
+            stack_frame["variables"][node["stmt"]["name"]] = {
+                "name": node["name"],
+                "type": node["type"],
+             }
+        elif node["stmt"]["kind"] == "FunctionDeclaration":
+            self.return_types.append(
+            {
+                "name": node["stmt"]["name"],
+                "params": node["stmt"]["params"],
+                "return_type": node["stmt"]["return_type"],
+            }
+        )
+        else:
+            self.error_class.semantic_error(
+                f"Invalid expression!",
+                self.file,
+                node["line"],
+            )

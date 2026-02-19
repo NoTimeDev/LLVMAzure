@@ -12,6 +12,7 @@ NATIVE_TYPES = [
     "string",
 ]
 NATIVE_KEYWORDS = [
+    "declare",
     "template",
     "let",
     "struct",

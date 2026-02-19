@@ -92,6 +92,8 @@ class PARSER:
                 return self.parse_fn()
             case "ret":
                 return self.parse_ret()
+            case "declare":
+                return self.parse_declare()
             case "stop" | "continue":
                 token = self.eat()
                 return {
@@ -458,6 +460,15 @@ class PARSER:
             "parent": parent,
             "child": child,
             "line": line,
+        }
+
+    def parse_declare(self):
+        line = self.eat()["line"]
+        stmt = self.parse_stmt()
+        return {
+            "kind": "DeclareForeignStatement",
+            "stmt": stmt,
+            "line": line
         }
 
     def parse_primary(self):

@@ -61,8 +61,8 @@ class COMPILER:
             element = self.compile_type(node["of"], value)
             return (
                 ir.ArrayType(element, node["size"])
-                if node["size"] != None or value == None
-                else ir.ArrayType(element, len(value["elements"]))
+                if node["size"] != None
+                else element.as_pointer()
             )
         else:
             self.error_class.compiler_error("Uknown type!", self.file, node["line"])
@@ -87,7 +87,7 @@ class COMPILER:
                 return self.compile_binary(node)
             case "IntegerLiteral" | "HexLiteral" | "OctalLiteral" | "BinaryLiteral":
                 context = self.get_context()
-                if context and context["kind"] == "VariableDeclaration":
+                if context and context["kind"] in ("VariableDeclaration", "TypeCast"):
                     return ir.Constant(context["type"], node["value"])
                 else:
                     return ir.Constant(ir.IntType(32), node["value"])
@@ -98,13 +98,24 @@ class COMPILER:
                 return self.compile_string(node)
             case "ArrayLiteral":
                 return self.compile_array(node)
+            case "DeclareForeignStatement":
+                return self.compile_declare_foreign(node)
+
+    def retrieve_basic_type(self, node):
+        if node["kind"] == "BaseType":
+            return node["type"]
+        elif node["kind"] == "ArrayType" or node["kind"] == "GenericType":
+            return self.retrieve_basic_type(node["of"])
+        elif node["kind"] == "PointerType":
+            return self.retrieve_basic_type(node["to"])
+        elif node["kind"] == "StructType":
+            return node
 
     def compile_variable(self, node):
         stack_frame = self.get_current_stack_frame(node["line"])
         variable_type = self.compile_type(node["type"], node["value"])
         self.context.append({
             "kind": "VariableDeclaration",
-            "name": node["name"],
             "type": variable_type,
             "raw": node["type"]
         })
@@ -116,9 +127,17 @@ class COMPILER:
 
     def compile_function(self, node):
         return_type = self.compile_type(node["return_type"])
-        func_type = ir.FunctionType(return_type, [])
+        params = []
+        for param in node["params"]:
+            params.append(self.compile_type(param["type"]))
+            
+        func_type = ir.FunctionType(return_type, params)
+        param_index = 0
+        for param in node["params"]:
+            func_type.args[param_index].name = param["name"]
+            param_index += 1
         main_func = ir.Function(self.module, func_type, name=node["name"])
-
+        
         block = main_func.append_basic_block(name="entry")
         builder = ir.IRBuilder(block)
         self.stack.append({"builder": builder, "variables": {}})
@@ -126,7 +145,7 @@ class COMPILER:
         for body_node in node["body"]:
             self.compile_stmt(body_node)
 
-        if node["body"][len(node["body"]) - 1]["kind"] != "ReturnExpression":
+        if len(node["body"]) == 0 or node["body"][len(node["body"]) - 1]["kind"] != "ReturnExpression":
             builder.ret(ir.Constant(return_type, 0))
 
         self.stack.pop()
@@ -181,12 +200,40 @@ class COMPILER:
         element_type = self.compile_type(context["raw"]["of"])
         compiled_elements = []
 
+        self.context.append({
+            "kind": "TypeCast",
+            "type": element_type,
+            "raw": context["raw"]["of"]
+        })
+
         for element in node["elements"]:
             compiled_elements.append(self.compile_stmt(element))
 
+        self.context.pop()
 
         while len(compiled_elements) < size:
             compiled_elements.append(ir.Constant(element_type, 0))
 
         array_type = ir.ArrayType(element_type, size)
         return ir.Constant(array_type, compiled_elements)
+    
+    def compile_declare_foreign(self, node):
+        if node["stmt"]["kind"] == "VariableDeclaration":
+            counter = ir.GlobalVariable(self.module, self.compile_type(node["stmt"]["type"]), name=node["stmt"]["name"])
+            counter.linkage = "external"
+            counter.initializer = None
+        elif node["stmt"]["kind"] == "FunctionDeclaration":     
+            args = []
+            for arg in node["stmt"]["params"]:
+                args.append(self.compile_type(arg["type"]))
+            func_type = ir.FunctionType(
+                self.compile_type(node["stmt"]["return_type"]),
+                args
+            )
+
+            param_index = 0
+            for param in node["stmt"]["params"]:
+                func_type.args[param_index].name = param["name"]
+                param_index += 1
+
+            ir.Function(self.module, func_type, name=node["stmt"]["name"])
