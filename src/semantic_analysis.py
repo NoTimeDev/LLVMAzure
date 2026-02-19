@@ -1,0 +1,557 @@
+import json
+from error import *
+
+
+class SEMANTIC_ANALYSIS:
+    def __init__(self, ast: list, file: str = ""):
+        self.ast = ast
+        self.file = file
+        self.types = []
+        self.structs = {}
+        self.return_types = []
+        self.stack_frame = []
+        self.operators = {
+            "+": [
+                {
+                    "left": "u8",
+                    "right": "u8",
+                    "return": {"kind": "BaseType", "type": "u8"},
+                },
+                {
+                    "left": "u16",
+                    "right": "u16",
+                    "return": {"kind": "BaseType", "type": "u16"},
+                },
+                {
+                    "left": "u32",
+                    "right": "u32",
+                    "return": {"kind": "BaseType", "type": "u32"},
+                },
+                {
+                    "left": "u64",
+                    "right": "u64",
+                    "return": {"kind": "BaseType", "type": "u64"},
+                },
+                {
+                    "left": "i8",
+                    "right": "i8",
+                    "return": {"kind": "BaseType", "type": "i8"},
+                },
+                {
+                    "left": "i16",
+                    "right": "i16",
+                    "return": {"kind": "BaseType", "type": "i16"},
+                },
+                {
+                    "left": "i32",
+                    "right": "i32",
+                    "return": {"kind": "BaseType", "type": "i32"},
+                },
+                {
+                    "left": "i64",
+                    "right": "i64",
+                    "return": {"kind": "BaseType", "type": "i64"},
+                },
+                {
+                    "left": "f64",
+                    "right": "f64",
+                    "return": {"kind": "BaseType", "type": "f64"},
+                },
+                {
+                    "left": "string",
+                    "right": "string",
+                    "return": {"kind": "BaseType", "type": "string"},
+                },
+            ],
+            "-": [
+                {
+                    "left": "u8",
+                    "right": "u8",
+                    "return": {"kind": "BaseType", "type": "u8"},
+                },
+                {
+                    "left": "u16",
+                    "right": "u16",
+                    "return": {"kind": "BaseType", "type": "u16"},
+                },
+                {
+                    "left": "u32",
+                    "right": "u32",
+                    "return": {"kind": "BaseType", "type": "u32"},
+                },
+                {
+                    "left": "u64",
+                    "right": "u64",
+                    "return": {"kind": "BaseType", "type": "u64"},
+                },
+                {
+                    "left": "i8",
+                    "right": "i8",
+                    "return": {"kind": "BaseType", "type": "i8"},
+                },
+                {
+                    "left": "i16",
+                    "right": "i16",
+                    "return": {"kind": "BaseType", "type": "i16"},
+                },
+                {
+                    "left": "i32",
+                    "right": "i32",
+                    "return": {"kind": "BaseType", "type": "i32"},
+                },
+                {
+                    "left": "i64",
+                    "right": "i64",
+                    "return": {"kind": "BaseType", "type": "i64"},
+                },
+                {
+                    "left": "f64",
+                    "right": "f64",
+                    "return": {"kind": "BaseType", "type": "f64"},
+                },
+            ],
+            "*": [
+                {
+                    "left": "u8",
+                    "right": "u8",
+                    "return": {"kind": "BaseType", "type": "u8"},
+                },
+                {
+                    "left": "u16",
+                    "right": "u16",
+                    "return": {"kind": "BaseType", "type": "u16"},
+                },
+                {
+                    "left": "u32",
+                    "right": "u32",
+                    "return": {"kind": "BaseType", "type": "u32"},
+                },
+                {
+                    "left": "u64",
+                    "right": "u64",
+                    "return": {"kind": "BaseType", "type": "u64"},
+                },
+                {
+                    "left": "i8",
+                    "right": "i8",
+                    "return": {"kind": "BaseType", "type": "i8"},
+                },
+                {
+                    "left": "i16",
+                    "right": "i16",
+                    "return": {"kind": "BaseType", "type": "i16"},
+                },
+                {
+                    "left": "i32",
+                    "right": "i32",
+                    "return": {"kind": "BaseType", "type": "i32"},
+                },
+                {
+                    "left": "i64",
+                    "right": "i64",
+                    "return": {"kind": "BaseType", "type": "i64"},
+                },
+                {
+                    "left": "f64",
+                    "right": "f64",
+                    "return": {"kind": "BaseType", "type": "f64"},
+                },
+            ],
+            "/": [
+                {
+                    "left": "u8",
+                    "right": "u8",
+                    "return": {"kind": "BaseType", "type": "u8"},
+                },
+                {
+                    "left": "u16",
+                    "right": "u16",
+                    "return": {"kind": "BaseType", "type": "u16"},
+                },
+                {
+                    "left": "u32",
+                    "right": "u32",
+                    "return": {"kind": "BaseType", "type": "u32"},
+                },
+                {
+                    "left": "u64",
+                    "right": "u64",
+                    "return": {"kind": "BaseType", "type": "u64"},
+                },
+                {
+                    "left": "i8",
+                    "right": "i8",
+                    "return": {"kind": "BaseType", "type": "i8"},
+                },
+                {
+                    "left": "i16",
+                    "right": "i16",
+                    "return": {"kind": "BaseType", "type": "i16"},
+                },
+                {
+                    "left": "i32",
+                    "right": "i32",
+                    "return": {"kind": "BaseType", "type": "i32"},
+                },
+                {
+                    "left": "i64",
+                    "right": "i64",
+                    "return": {"kind": "BaseType", "type": "i64"},
+                },
+                {
+                    "left": "f64",
+                    "right": "f64",
+                    "return": {"kind": "BaseType", "type": "f64"},
+                },
+            ],
+        }
+        self.error_class = ERROR()
+        for node in self.ast:
+            self.analyze(node)
+        if len(self.error_class.stack) > 0:
+            self.error_class.dump()
+
+    def analyze(self, node):
+        match node["kind"]:
+            case "VariableDeclaration":
+                self.analyze_variable_declaration(node)
+            case "FunctionDeclaration":
+                self.analyze_function_declaration(node)
+            case "StructDeclaration":
+                self.analyze_struct_declaration(node)
+            case "CallExpression":
+                self.analyze_call_expression(node) 
+            case "BinaryExpression" | "DereferenceExpression" | "UnaryExpression":
+                self.build_type_from_expr(node)
+    # def retrieve_basic_type(self, node):
+    #     if node["kind"] == "BaseType":
+    #         return node["type"]
+    #     elif node["kind"] == "ArrayType" or node["kind"] == "GenericType":
+    #         return self.retrieve_basic_type(node["of"])
+    #     elif node["kind"] == "PointerType":
+    #         return self.retrieve_basic_type(node["to"])
+
+    def is_return_type(self, type, function_name):
+        for data in self.return_types:
+            if data["name"] == function_name and self.stringify_type(
+                data["return_type"]
+            ) == self.stringify_type(type):
+                return True
+        return False
+
+    def get_return_type(self, function_name):
+        for data in self.return_types:
+            if data["name"] == function_name:
+                return data["return_type"]
+        return None
+
+    def stringify_type(self, type):
+        value = ""
+        node = type
+        while node["kind"] != "BaseType":
+            if node["kind"] == "ArrayType":
+                value += "[]"
+                node = node["of"]
+            elif node["kind"] == "StructType":
+                index = 0
+                for member in node["members"]:
+                    value += self.stringify_type(member) + (", " if index != len(node["members"]) - 1 else "")
+                    index += 1
+                break
+            elif node["kind"] == "PointerType":
+                value += "*"
+                node = node["to"]
+            elif node["kind"] == "GenericType":
+                value += "<"
+                index = 0
+                for generic in node["generics"]:
+                    value += generic + (
+                        "" if index == len(node["generics"]) - 1 else " "
+                    )
+                    index += 1
+                value += ">"
+                node = node["of"]
+        if "type" in node:
+            value += node["type"]
+        return value
+
+    def implicit_int_conversion(self, type_t, type_v):
+        current_t = type_t
+        current_v = type_v
+
+        while current_t["kind"] != "BaseType":
+            if current_t["kind"] == "ArrayType":
+                if "of" not in current_v:
+                    return
+                current_v = current_v["of"]
+                current_t = current_t["of"]
+            elif current_t["kind"] == "StructType":
+                for index in range(len(current_t["members"])):
+                    self.implicit_int_conversion(current_t["members"][index], current_v["members"][index])
+                break                
+            elif current_t["kind"] == "PointerType":
+                if "to" not in current_v:
+                    return
+                current_v = current_v["to"]
+                current_t = current_t["to"]
+            elif current_t["kind"] == "GenericType":
+                if "of" not in current_v:
+                    return
+                current_v = current_v["of"]
+                current_t = current_t["of"]
+
+        if "type" not in current_v:
+            return
+        if current_t["type"] in (
+            "u8",
+            "u16",
+            "u32",
+            "u64",
+            "i8",
+            "i16",
+            "i32",
+            "i64",
+        ) and current_v["type"] in (
+            "u8",
+            "u16",
+            "u32",
+            "u64",
+            "i8",
+            "i16",
+            "i32",
+            "i64",
+        ):
+            current_v["type"] = current_t["type"]
+
+    def is_operator_compatible(self, operator, left, right):
+        s_left = self.stringify_type(left)
+        s_right = self.stringify_type(right)
+
+        for data in self.operators[operator]:
+            if data["left"] == s_left and data["right"] == s_right:
+                return True
+
+        return False
+
+    def get_return_type_from_operator(self, operator, left, right):
+        s_left = self.stringify_type(left)
+        s_right = self.stringify_type(right)
+
+        for data in self.operators[operator]:
+            if data["left"] == s_left and data["right"] == s_right:
+                return data["return"]
+
+        return None
+
+    def build_type_from_expr(self, node):
+        stack_frame = self.stack_frame[len(self.stack_frame) - 1]
+        result = None
+        if node["kind"] == "IdentifierLiteral":
+            result = stack_frame["variables"][node["value"]]["type"]
+        elif node["kind"] == "CallExpression":
+            result = self.get_return_type(node["function"])
+        elif node["kind"] == "DereferenceExpression":
+            expr = self.build_type_from_expr(node["value"])
+            if "to" not in expr:
+                self.error_class.semantic_error(
+                    f"Cannot dereference '{self.stringify_type(expr)}'!",
+                    self.file,
+                    node["line"],
+                )
+                self.error_class.dump()
+            result = expr["to"]  # type: ignore
+        elif node["kind"] == "ArrayLiteral":
+            result = {
+                "kind": "ArrayType",
+                "of": self.build_type_from_expr(node["elements"][0]),
+            }
+        elif node["kind"] == "StructLiteral":
+            result = {
+                "kind": "StructType",
+                "members": []
+            }
+
+            for member in node["elements"]:
+                result["members"].append(self.build_type_from_expr(member))
+        elif node["kind"] == "ExplicitConversionExpression":
+            result = node["type"]
+        elif node["kind"] == "BinaryExpression":
+            left_type = self.build_type_from_expr(node["left"])
+            right_type = self.build_type_from_expr(node["right"])
+            if not self.is_operator_compatible(node["operator"], left_type, right_type):
+                self.error_class.semantic_error(
+                    f"No operator '{node["operator"]}' for {self.stringify_type(left_type)} and {self.stringify_type(right_type)}!",
+                    self.file,
+                    node["line"],
+                )
+                self.error_class.dump()
+            result = self.get_return_type_from_operator(
+                node["operator"], left_type, right_type
+            )
+        elif node["kind"] == "UnaryExpression":
+            if node["operator"] == "-":
+                result = self.build_type_from_expr(node["value"])
+            elif node["operator"] == "&":
+                result = {
+                    "kind": "PointerType",
+                    "to": self.build_type_from_expr(node["value"]),
+                }
+            else:
+                self.error_class.semantic_error(
+                    f"Invalid unary operator -> '{node["operator"]}'!",
+                    self.file,
+                    node["line"],
+                )
+                self.error_class.dump()
+        elif node["kind"] == "IndexExpression":
+            parent = self.build_type_from_expr(node["parent"])
+            if parent["kind"] != "ArrayType":
+                self.error_class.semantic_error(
+                    f"Cannot index non-array type!",
+                    self.file,
+                    node["line"],
+                )
+                self.error_class.dump()
+            if parent["type"] in self.structs:
+                if node["child"]["kind"] != "IdentifierLiteral":
+                    self.error_class.semantic_error(
+                        f"Cannot index struct with a non-identifier value.",
+                        self.file,
+                        node["line"],
+                    )
+                    self.error_class.dump()
+                result = self.structs["members"][node["child"]["value"]]
+            else:
+                child = self.build_type_from_expr(node["child"])
+                if child["type"] not in (
+                    "u8",
+                    "u16",
+                    "u32",
+                    "u64",
+                    "i8",
+                    "i16",
+                    "i32",
+                    "i64",
+                ):
+                    self.error_class.semantic_error(
+                        f"Cannot index array with a non-integer value.",
+                        self.file,
+                        node["line"],
+                    )
+                    self.error_class.dump()
+                result = parent["of"]
+        elif node["kind"] in (
+            "IntegerLiteral",
+            "HexLiteral",
+            "BinaryLiteral",
+            "OctalLiteral",
+        ):
+            result = {"kind": "BaseType", "type": "i32"}
+        elif node["kind"] == "FloatLiteral":
+            result = {"kind": "BaseType", "type": "f32"}
+        elif node["kind"] == "CharLiteral":
+            result = {"kind": "BaseType", "type": "u8"}
+        elif node["kind"] == "StringLiteral":
+            result = {"kind": "BaseType", "type": "string"}
+        else:
+            self.error_class.semantic_error(
+                f"Invalid type!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        return result
+
+    def analyze_variable_declaration(self, node):
+        stack_frame = self.stack_frame[len(self.stack_frame) - 1]
+        if node["value"] == None:
+            self.error_class.semantic_error(
+                f"No value assigned to variable!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        self.analyze(node["value"])
+        type = node["type"]
+        value_type = self.build_type_from_expr(node["value"])
+
+        if value_type == None:
+            self.error_class.semantic_error(
+                f"Invalid type!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        self.implicit_int_conversion(type, value_type)
+        s_type = self.stringify_type(type)
+        s_value_type = self.stringify_type(value_type)
+        if s_type != s_value_type:
+            self.error_class.semantic_error(
+                f"Mismatch between type and value -> Type is '{s_type}', while value is '{s_value_type}'!",
+                self.file,
+                node["line"],
+            )
+        stack_frame["variables"][node["name"]] = {
+            "name": node["name"],
+            "type": node["type"],
+        }
+
+    def analyze_function_declaration(self, node):
+        self.stack_frame.append(
+            {
+                "kind": "function",
+                "name": node["name"],
+                "variables": {},
+            }
+        )
+
+        self.return_types.append(
+            {
+                "name": node["name"],
+                "params": node["params"],
+                "return_type": node["return_type"],
+            }
+        )
+
+        for body_node in node["body"]:
+            self.analyze(body_node)
+
+        self.stack_frame.pop()
+
+    def analyze_struct_declaration(self, node):
+        struct_data = {"name": node["identifier"], "members": {}}
+
+        for member in node["members"]:
+            struct_data["members"][member["identifier"]] = member["type"]
+        self.structs[node["identifier"]] = struct_data
+
+    def analyze_call_expression(self, node):
+        fn = None
+        for data in self.return_types:
+            if data["name"] == node["function"]:
+                fn = data
+                break
+
+        if fn == None:
+            self.error_class.semantic_error(
+                f"'{node["function"]}' is not a function!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        if len(fn["params"]) > len(node["args"]):
+            self.error_class.semantic_error(
+                f"Too few arguments while calling '{node["function"]}'!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        elif len(fn["params"]) < len(node["args"]):
+            self.error_class.semantic_error(
+                f"Too many arguments while calling '{node["function"]}'!",
+                self.file,
+                node["line"],
+            )
+            self.error_class.dump()
+        for param in fn["params"]:
+            pass
