@@ -26,6 +26,9 @@ IF EXIST "%INSTALL_PATH%\LLVM\bin\clang.exe" (
     SET CLANG_DIR=%INSTALL_PATH%\LLVM\bin
     GOTO SKIP_CLANG
 )
+for /f "tokens=2*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path') do set "CURRENT_PATH=%%B"
+set "NEW_PATH=%CURRENT_PATH%;%CLANG_DIR%"
+setx Path "%NEW_PATH%"
 echo Could not find clang.exe, please add it to PATH manually
 :SKIP_CLANG
 
