@@ -1,3 +1,5 @@
+import sys
+
 class ERROR:
     def __init__(self):
         self.stack = []
@@ -5,7 +7,7 @@ class ERROR:
     def dump(self, exit_code: int = 1):
         for error in self.stack:
             print(error)
-        exit(exit_code)
+        sys.exit(exit_code)
 
     def lexing_error(self, message: str = "", file: str = "", line: int = 1):
         self.stack.append(f"[{file}:{line}] Lexical Error: {message}")

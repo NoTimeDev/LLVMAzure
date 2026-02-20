@@ -15,13 +15,13 @@ for flag in argv:
     if flag.startswith("-"):
         flags.append(flag)
 
-if "--version" or "-v":
+if "--version" in flags or "-v" in flags:
     print("azure version " + VERSION.version)
-    sys.exit(1)
+    sys.exit(0)
 
 if argc < 2:
     print("Must provide a file!")
-    sys.exit()(1)
+    sys.exit(1)
 
 input_file = Path(argv[1])
 output_file = Path("a.o")
