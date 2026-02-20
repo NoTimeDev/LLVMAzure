@@ -298,15 +298,25 @@ class PARSER:
             and self.at()["kind"] != "EOF"
             and self.at()["value"] != ")"
         ):
-            params_name = self.expect(kind="identifier")
-            params_type = self.parse_type()
-            param = {
-                "kind": "ParameterDeclaration",
-                "name": params_name["value"],
-                "type": params_type,
-                "line": params_name["line"],
-            }
-            params.append(param)
+            if self.at()["kind"] != "varadic":
+                params_name = self.expect(kind="identifier")
+                params_type = self.parse_type()
+                param = {
+                    "kind": "ParameterDeclaration",
+                    "name": params_name["value"],
+                    "type": params_type,
+                    "line": params_name["line"],
+                }
+                params.append(param)
+            else:
+                line = self.eat()["line"]
+                param = {
+                    "kind": "ParameterDeclaration",
+                    "name": "...",
+                    "type": "varadic",
+                    "line": line,
+                }
+                params.append(param)
         self.expect(")")
         body = []
         while (

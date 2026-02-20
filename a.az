@@ -1,2 +1,4 @@
-(declare (fn printf i32 ()))
-(fn main i32 (argc i32 argv []string))
+(declare (fn printf i32 (fmt string ...)))
+(fn main i32 (argc i32 argv []string)
+    (() printf "Hello World!")
+)

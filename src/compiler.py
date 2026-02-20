@@ -1,7 +1,9 @@
+import sys
+
 from error import *
 from llvmlite import ir, binding
 import ctypes
-
+import os
 
 class COMPILER:
     def __init__(self, ast: list, file: str = ""):
@@ -11,6 +13,7 @@ class COMPILER:
         self.stack = []
         self.context = []
         self.strings = {}
+        self.functions = {}
         self.module = None
         self.error_class = ERROR()
         self.llvm_base_types = {
@@ -25,6 +28,7 @@ class COMPILER:
             "f32": ir.FloatType(),
             "f64": ir.DoubleType(),
             "string": ir.IntType(8).as_pointer(),
+            "void": ir.VoidType()
         }
 
         self.init_bindings()
@@ -36,6 +40,23 @@ class COMPILER:
         if len(self.error_class.stack) > 0:
             self.error_class.dump()
 
+    def emit_obj(self, name):
+        llvm_module = binding.parse_assembly(str(self.module))
+        llvm_module.verify()
+
+        target_triple = binding.get_default_triple()
+        target = binding.Target.from_triple(target_triple)
+        target_machine = target.create_target_machine(codemodel='default')
+        obj = target_machine.emit_object(llvm_module)
+
+        extension = ".obj" if sys.platform == "win32" else ".o"
+        os.makedirs("_azure_temp_", exist_ok=True)
+        obj_path = os.path.join("_azure_temp_", os.path.splitext(os.path.basename(name))[0] + extension)        
+        with open(obj_path, "wb") as f:
+            f.write(obj)
+            f.close()
+        return obj_path
+
     def init_bindings(self):
         binding.initialize_native_target()
         binding.initialize_native_asmprinter()
@@ -43,7 +64,7 @@ class COMPILER:
     def create_module(self, name: str = "main"):
         self.module = ir.Module(name=name)
         self.module.triple = binding.get_default_triple()
-        self.module.data_layout = binding.Target.from_default_triple().create_target_machine().target_data # type: ignore
+        self.module.data_layout = binding.Target.from_default_triple().create_target_machine(codemodel='default').target_data # type: ignore
 
     def get_context(self):
         if len(self.context) > 0:
@@ -100,6 +121,8 @@ class COMPILER:
                 return self.compile_array(node)
             case "DeclareForeignStatement":
                 return self.compile_declare_foreign(node)
+            case "CallExpression":
+                return self.compile_call(node)
 
     def retrieve_basic_type(self, node):
         if node["kind"] == "BaseType":
@@ -140,6 +163,7 @@ class COMPILER:
         
         block = main_func.append_basic_block(name="entry")
         builder = ir.IRBuilder(block)
+        self.functions[node["name"]] = main_func
         self.stack.append({"builder": builder, "variables": {}})
 
         for body_node in node["body"]:
@@ -224,16 +248,33 @@ class COMPILER:
             counter.initializer = None
         elif node["stmt"]["kind"] == "FunctionDeclaration":     
             args = []
+            varadic = False
             for arg in node["stmt"]["params"]:
+                if arg["type"] == "varadic":
+                    varadic = True
+                    break
                 args.append(self.compile_type(arg["type"]))
             func_type = ir.FunctionType(
                 self.compile_type(node["stmt"]["return_type"]),
-                args
+                args, var_arg=varadic
             )
 
             param_index = 0
             for param in node["stmt"]["params"]:
+                if param["type"] == "varadic":
+                    break
                 func_type.args[param_index].name = param["name"]
                 param_index += 1
 
-            ir.Function(self.module, func_type, name=node["stmt"]["name"])
+            fn = ir.Function(self.module, func_type, name=node["stmt"]["name"])
+            self.functions[node["stmt"]["name"]] = fn
+
+    def compile_call(self, node):
+        stack_frame = self.get_current_stack_frame(node["line"])
+        function = self.functions[node["function"]]
+        args = []
+
+        for arg in node["args"]:
+            args.append(self.compile_stmt(arg))
+
+        return stack_frame["builder"].call(function, args)

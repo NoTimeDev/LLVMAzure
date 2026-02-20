@@ -542,14 +542,18 @@ class SEMANTIC_ANALYSIS:
                 node["line"],
             )
             self.error_class.dump()
-        if len(fn["params"]) > len(node["args"]):
+        less_args_count = len(fn["params"])
+        if fn["params"][len(fn["params"]) - 1]["type"] == "varadic":
+            less_args_count -= 1
+
+        if less_args_count > len(node["args"]):
             self.error_class.semantic_error(
                 f"Too few arguments while calling '{node["function"]}'!",
                 self.file,
                 node["line"],
             )
             self.error_class.dump()
-        elif len(fn["params"]) < len(node["args"]):
+        elif fn["params"][len(fn["params"]) - 1]["type"] != "varadic" and len(fn["params"]) < len(node["args"]):
             self.error_class.semantic_error(
                 f"Too many arguments while calling '{node["function"]}'!",
                 self.file,

@@ -86,6 +86,11 @@ class LEXER:
                 self.push_token(self.make_token(self.eat()))
             elif char == "&":
                 self.push_token(self.make_token(self.eat()))
+            elif char == "." and self.peek(1) == "." and self.peek(2) == ".":
+                self.eat()
+                self.eat()
+                self.eat()
+                self.push_token(self.make_token("...", "varadic"))
             elif char == "=":
                 if self.peek() == "=":
                     self.eat()

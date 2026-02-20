@@ -1,4 +1,5 @@
 NATIVE_TYPES = [
+    "void",
     "u8",
     "u16",
     "u32",
