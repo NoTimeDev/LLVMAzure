@@ -79,6 +79,11 @@ class LEXER:
             elif char == "+":
                 self.push_token(self.make_token(self.eat()))
             elif char == "-":
+                if self.peek() == ">":
+                    self.eat()
+                    self.eat()
+                    self.push_token(self.make_token("->"))
+                    continue
                 self.push_token(self.make_token(self.eat()))
             elif char == "*":
                 self.push_token(self.make_token(self.eat()))
@@ -91,6 +96,13 @@ class LEXER:
                 self.eat()
                 self.eat()
                 self.push_token(self.make_token("...", "varadic"))
+            elif char == ".":
+                self.push_token(self.make_token(self.eat()))
+            elif char == "#":
+                self.eat()
+
+                while len(self.characters) > 0 and self.at() not in ("\n", "\r"):
+                    self.eat()
             elif char == "=":
                 if self.peek() == "=":
                     self.eat()
@@ -119,7 +131,7 @@ class LEXER:
                     self.push_token(self.make_token("!="))
                 else:
                     self.push_token(self.make_token(self.eat()))
-            elif char.isnumeric():
+            elif char.isdigit():
                 number = ""
 
                 while len(self.characters) > 0 and (

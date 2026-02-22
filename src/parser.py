@@ -123,6 +123,10 @@ class PARSER:
                     node = self.parse_call()
                 case ".":
                     node = self.parse_index()
+                case "=":
+                    node = self.parse_assignment()
+                case "->":
+                    node = self.parse_struct_index()
         self.expect(")")
         return node
 
@@ -146,6 +150,7 @@ class PARSER:
                 node = {
                     "kind": "StructType",
                     "members": [],
+                    "name": token["value"],
                     "line": token["line"]
                 }
                 
@@ -385,7 +390,7 @@ class PARSER:
             len(self.tokens) > 0
             and self.at()["kind"] != "EOF"
             and self.at()["value"] != ")"
-        ):
+        ):  
             elements.append(self.parse_stmt_or_expr())
         return {"kind": "StructLiteral", "elements": elements, "line": line}
     
@@ -462,13 +467,36 @@ class PARSER:
         }
 
     def parse_index(self):
-        line = self.eat()["value"]
+        line = self.eat()["line"]
         parent = self.parse_stmt_or_expr()
-        child = self.parse_stmt_or_expr()
+        child_chain = []
+        while (
+            len(self.tokens) > 0
+            and self.at()["kind"] != "EOF"
+            and self.at()["value"] != ")"
+        ):
+            child_chain.append(self.parse_stmt_or_expr())
         return {
             "kind": "IndexExpression",
             "parent": parent,
-            "child": child,
+            "child": child_chain,
+            "line": line,
+        }
+    
+    def parse_struct_index(self):
+        line = self.eat()["line"]
+        parent = self.parse_stmt_or_expr()
+        child_chain = []
+        while (
+            len(self.tokens) > 0
+            and self.at()["kind"] != "EOF"
+            and self.at()["value"] != ")"
+        ):
+            child_chain.append(self.parse_stmt_or_expr())
+        return {
+            "kind": "MemberExpression",
+            "parent": parent,
+            "child": child_chain,
             "line": line,
         }
 
@@ -479,6 +507,17 @@ class PARSER:
             "kind": "DeclareForeignStatement",
             "stmt": stmt,
             "line": line
+        }
+
+    def parse_assignment(self):
+        line = self.eat()["line"]
+        left = self.parse_stmt_or_expr()
+        right = self.parse_stmt_or_expr()
+        return {
+            "kind": "AssignmentExpression",
+            "left": left,
+            "right": right,
+            "line": line,
         }
 
     def parse_primary(self):

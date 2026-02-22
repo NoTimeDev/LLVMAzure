@@ -408,24 +408,15 @@ class SEMANTIC_ANALYSIS:
                 self.error_class.dump()
         elif node["kind"] == "IndexExpression":
             parent = self.build_type_from_expr(node["parent"])
-            if parent["kind"] != "ArrayType":
-                self.error_class.semantic_error(
-                    f"Cannot index non-array type!",
-                    self.file,
-                    node["line"],
-                )
-                self.error_class.dump()
-            if parent["type"] in self.structs:
-                if node["child"]["kind"] != "IdentifierLiteral":
+            for index in node["child"]:
+                if parent["kind"] != "ArrayType":
                     self.error_class.semantic_error(
-                        f"Cannot index struct with a non-identifier value.",
+                        f"Cannot index non-array type!",
                         self.file,
                         node["line"],
                     )
                     self.error_class.dump()
-                result = self.structs["members"][node["child"]["value"]]
-            else:
-                child = self.build_type_from_expr(node["child"])
+                child = self.build_type_from_expr(index)
                 if child["type"] not in (
                     "u8",
                     "u16",
@@ -442,7 +433,30 @@ class SEMANTIC_ANALYSIS:
                         node["line"],
                     )
                     self.error_class.dump()
-                result = parent["of"]
+                parent = child
+            result = parent["of"]
+        elif node["kind"] == "MemberExpression":
+            parent = self.build_type_from_expr(node["parent"])
+            if parent["kind"] != "StructType":
+                self.error_class.semantic_error(
+                    f"Cannot access members of a non-struct type!",
+                    self.file,
+                    node["line"],
+                )
+                self.error_class.dump()
+            data = self.structs[parent["name"]] # type: ignore
+            result = data["members"]
+            for child in node["child"]:
+                if child["value"] not in result:
+                    self.error_class.semantic_error(
+                        f"{child["value"]} is not a member of struct '{parent["name"]}'!",
+                        self.file,
+                        node["line"],
+                    )
+                    self.error_class.dump()
+                result = result[child["value"]]
+
+            return result
         elif node["kind"] in (
             "IntegerLiteral",
             "HexLiteral",

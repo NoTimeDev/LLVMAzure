@@ -10,6 +10,7 @@ NATIVE_TYPES = [
     "i64",
     "f32",
     "f64",
+    "bool",
     "string",
 ]
 NATIVE_KEYWORDS = [
